@@ -479,4 +479,151 @@ class MainActivity : ComponentActivity() {
         }
 
         if (
-            android
+            android.os.Build.VERSION.SDK_INT >=
+            android.os.Build.VERSION_CODES.S &&
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_SCAN
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            statusText.text =
+                "Bluetooth tarama izni gerekli."
+
+            return
+        }
+
+        bluetoothScanner =
+            adapter.bluetoothLeScanner
+
+        if (bluetoothScanner == null) {
+
+            statusText.text =
+                "BLE tarayıcı başlatılamadı."
+
+            return
+        }
+
+        targetFound = false
+
+        statusText.text =
+            "🔍 Tag Go+ aranıyor..."
+
+        signalText.text =
+            "📡 BLE taraması başlatıldı..."
+
+        scanButton.text =
+            "TARAMAYI DURDUR"
+
+        isScanning = true
+
+        try {
+
+            bluetoothScanner?.startScan(
+                scanCallback
+            )
+
+            handler.postDelayed(
+                stopScanRunnable,
+                15000
+            )
+
+        } catch (e: SecurityException) {
+
+            isScanning = false
+
+            scanButton.text =
+                "TARAMAYI BAŞLAT"
+
+            statusText.text =
+                "Bluetooth tarama izni gerekli."
+        }
+    }
+
+    // ---------------------------------------------------------
+    // BLE TARAMA DURDUR
+    // ---------------------------------------------------------
+
+    private fun stopScan() {
+
+        if (!isScanning) {
+            return
+        }
+
+        if (
+            android.os.Build.VERSION.SDK_INT >=
+            android.os.Build.VERSION_CODES.S &&
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_SCAN
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            return
+        }
+
+        try {
+
+            bluetoothScanner?.stopScan(
+                scanCallback
+            )
+
+        } catch (e: SecurityException) {
+
+            // İzin kaldırılmış olabilir.
+        }
+
+        handler.removeCallbacks(
+            stopScanRunnable
+        )
+
+        isScanning = false
+
+        scanButton.text =
+            "TARAMAYI BAŞLAT"
+
+        if (!targetFound) {
+
+            statusText.text =
+                "🔴 Tag Go+ bulunamadı."
+
+            signalText.text =
+                "📡 RSSI: -"
+        }
+    }
+
+    // ---------------------------------------------------------
+    // ACTIVITY KAPANIRKEN
+    // ---------------------------------------------------------
+
+    override fun onDestroy() {
+
+        handler.removeCallbacks(
+            stopScanRunnable
+        )
+
+        if (isScanning) {
+
+            stopScan()
+        }
+
+        if (
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED ||
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+
+            locationManager.removeUpdates(
+                locationListener
+            )
+        }
+
+        super.onDestroy()
+    }
+}
+```
