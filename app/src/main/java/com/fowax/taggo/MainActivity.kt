@@ -27,8 +27,11 @@ class MainActivity : ComponentActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
 
+    private val targetName = "Nutule_FMN"
+    private val targetAddress = "C0:B2:B9:CE:63:D0"
+
     private val stopScanRunnable = Runnable {
-        stopBleScan()
+        stopScan()
     }
 
     private val scanCallback = object : ScanCallback() {
@@ -37,28 +40,36 @@ class MainActivity : ComponentActivity() {
             callbackType: Int,
             result: ScanResult
         ) {
-            runOnUiThread {
-                val device = result.device
-                val name = try {
-                    device.name ?: "İsimsiz cihaz"
-                } catch (e: SecurityException) {
-                    "İsim alınamadı"
-                }
+            val device = result.device
 
+            val name = try {
+                device.name ?: result.scanRecord?.deviceName
+            } catch (e: SecurityException) {
+                null
+            }
+
+            val address = device.address
+
+            if (
+                address.equals(targetAddress, ignoreCase = true) ||
+                name == targetName
+            ) {
                 val rssi = result.rssi
 
-                statusText.text =
-                    "Cihaz bulundu:\n\n" +
-                    "Ad: $name\n" +
-                    "Adres: ${device.address}\n" +
-                    "RSSI: $rssi dBm"
+                runOnUiThread {
+                    statusText.text =
+                        "TAG GO+ BULUNDU\n\n" +
+                        "Ad: $targetName\n" +
+                        "MAC: $address\n\n" +
+                        "RSSI: $rssi dBm"
+                }
             }
         }
 
         override fun onScanFailed(errorCode: Int) {
             runOnUiThread {
                 statusText.text =
-                    "BLE taraması başarısız.\nHata kodu: $errorCode"
+                    "Tarama başarısız.\nHata: $errorCode"
 
                 isScanning = false
                 scanButton.text = "TARAMAYI BAŞLAT"
@@ -68,6 +79,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.activity_main)
 
         statusText = findViewById(R.id.statusText)
@@ -147,31 +159,28 @@ class MainActivity : ComponentActivity() {
 
         if (adapter == null) {
             statusText.text =
-                "Bu telefonda Bluetooth bulunamadı."
+                "Bluetooth bulunamadı."
             return
         }
 
         if (!adapter.isEnabled) {
             statusText.text =
-                "Bluetooth kapalı. Önce Bluetooth'u aç."
+                "Bluetooth kapalı."
             return
         }
 
         if (isScanning) {
-            stopBleScan()
+            stopScan()
             return
         }
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-
-            if (
-                ActivityCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.BLUETOOTH_SCAN
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                return
-            }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_SCAN
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
         }
 
         bluetoothScanner = adapter.bluetoothLeScanner
@@ -183,54 +192,54 @@ class MainActivity : ComponentActivity() {
         }
 
         statusText.text =
-            "BLE cihazları aranıyor..."
+            "Tag Go+ aranıyor..."
+
+        scanButton.text =
+            "TARAMAYI DURDUR"
 
         isScanning = true
-        scanButton.text = "TARAMAYI DURDUR"
 
         bluetoothScanner?.startScan(scanCallback)
 
         handler.postDelayed(
             stopScanRunnable,
-            10000
+            15000
         )
     }
 
-    private fun stopBleScan() {
+    private fun stopScan() {
 
         if (!isScanning) {
             return
         }
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-
-            if (
-                ActivityCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.BLUETOOTH_SCAN
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                return
-            }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_SCAN
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
         }
 
         bluetoothScanner?.stopScan(scanCallback)
 
         isScanning = false
 
-        scanButton.text = "TARAMAYI BAŞLAT"
+        scanButton.text =
+            "TARAMAYI BAŞLAT"
 
         statusText.text =
             "Tarama tamamlandı."
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-
         handler.removeCallbacks(stopScanRunnable)
 
         if (isScanning) {
-            stopBleScan()
+            stopScan()
         }
+
+        super.onDestroy()
     }
 }
