@@ -1,4 +1,4 @@
-
+```kotlin
 package com.fowax.taggo
 
 import android.Manifest
@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
 
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var bluetoothScanner: BluetoothLeScanner? = null
+
     private var isScanning = false
     private var targetFound = false
 
@@ -44,17 +45,40 @@ class MainActivity : ComponentActivity() {
         stopScan()
     }
 
+    // ---------------------------------------------------------
+    // GPS
+    // ---------------------------------------------------------
+
     private val locationListener = object : LocationListener {
+
         override fun onLocationChanged(location: Location) {
+
             runOnUiThread {
+
                 locationText.text =
-                    "TELEFON KONUMU\n\n" +
-                    "Enlem: ${String.format(Locale.US, "%.6f", location.latitude)}\n" +
-                    "Boylam: ${String.format(Locale.US, "%.6f", location.longitude)}\n\n" +
+                    "📍 TELEFON KONUMU\n\n" +
+                    "Enlem: ${
+                        String.format(
+                            Locale.US,
+                            "%.6f",
+                            location.latitude
+                        )
+                    }\n" +
+                    "Boylam: ${
+                        String.format(
+                            Locale.US,
+                            "%.6f",
+                            location.longitude
+                        )
+                    }\n\n" +
                     "Hassasiyet: ${location.accuracy.toInt()} metre"
             }
         }
     }
+
+    // ---------------------------------------------------------
+    // BLE TARAMA
+    // ---------------------------------------------------------
 
     private val scanCallback = object : ScanCallback() {
 
@@ -62,89 +86,149 @@ class MainActivity : ComponentActivity() {
             callbackType: Int,
             result: ScanResult
         ) {
+
             val device = result.device
 
             val name = try {
-                device.name ?: result.scanRecord?.deviceName
+
+                device.name
+                    ?: result.scanRecord?.deviceName
+
             } catch (e: SecurityException) {
+
                 null
             }
 
             val address = device.address
 
+            // TAG GO+ kontrolü
             if (
-                address.equals(targetAddress, ignoreCase = true) ||
+                address.equals(
+                    targetAddress,
+                    ignoreCase = true
+                ) ||
                 name == targetName
             ) {
+
                 val rssi = result.rssi
 
                 val signal = when {
-                    rssi >= -60 -> "Çok güçlü"
-                    rssi >= -70 -> "Güçlü"
-                    rssi >= -85 -> "Orta"
-                    else -> "Zayıf"
+
+                    rssi >= -50 ->
+                        "Çok güçlü"
+
+                    rssi >= -60 ->
+                        "Güçlü"
+
+                    rssi >= -70 ->
+                        "Orta"
+
+                    rssi >= -80 ->
+                        "Zayıf"
+
+                    else ->
+                        "Çok zayıf"
                 }
 
                 runOnUiThread {
+
                     targetFound = true
 
                     statusText.text =
                         "🟢 TAG GO+ BULUNDU\n\n" +
-                        "Ad: $targetName\n" +
+                        "Ad: ${name ?: targetName}\n" +
                         "MAC: $address"
 
                     signalText.text =
-                        "RSSI: $rssi dBm\n" +
-                        "Sinyal gücü: $signal"
+                        "📡 RSSI: $rssi dBm\n" +
+                        "📶 Sinyal: $signal"
                 }
             }
         }
 
         override fun onScanFailed(errorCode: Int) {
+
             runOnUiThread {
+
                 statusText.text =
-                    "Tarama başarısız.\nHata: $errorCode"
+                    "🔴 BLE taraması başarısız\n\n" +
+                    "Hata kodu: $errorCode"
+
+                signalText.text =
+                    "📡 RSSI: -"
 
                 isScanning = false
-                scanButton.text = "TARAMAYI BAŞLAT"
+
+                scanButton.text =
+                    "TARAMAYI BAŞLAT"
             }
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    // ---------------------------------------------------------
+    // ACTIVITY
+    // ---------------------------------------------------------
+
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
+
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_main)
+        setContentView(
+            R.layout.activity_main
+        )
 
-        statusText = findViewById(R.id.statusText)
-        locationText = findViewById(R.id.locationText)
-        signalText = findViewById(R.id.signalText)
-        scanButton = findViewById(R.id.scanButton)
+        statusText =
+            findViewById(R.id.statusText)
 
+        locationText =
+            findViewById(R.id.locationText)
+
+        signalText =
+            findViewById(R.id.signalText)
+
+        scanButton =
+            findViewById(R.id.scanButton)
+
+        // Bluetooth
         val bluetoothManager =
-            getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+            getSystemService(
+                Context.BLUETOOTH_SERVICE
+            ) as BluetoothManager
 
-        bluetoothAdapter = bluetoothManager.adapter
+        bluetoothAdapter =
+            bluetoothManager.adapter
 
+        // GPS
         locationManager =
-            getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            getSystemService(
+                Context.LOCATION_SERVICE
+            ) as LocationManager
 
         scanButton.setOnClickListener {
+
             requestLocationPermission()
         }
     }
 
+    // ---------------------------------------------------------
+    // KONUM İZNİ
+    // ---------------------------------------------------------
+
     private fun requestLocationPermission() {
 
-        val fineGranted = ActivityCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        val fineGranted =
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
 
-        val coarseGranted = ActivityCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        val coarseGranted =
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
 
         if (!fineGranted && !coarseGranted) {
 
@@ -161,23 +245,34 @@ class MainActivity : ComponentActivity() {
         }
 
         startLocationUpdates()
+
         requestBluetoothPermissions()
     }
 
+    // ---------------------------------------------------------
+    // BLUETOOTH İZNİ
+    // ---------------------------------------------------------
+
     private fun requestBluetoothPermissions() {
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        if (
+            android.os.Build.VERSION.SDK_INT >=
+            android.os.Build.VERSION_CODES.S
+        ) {
 
-            if (
+            val scanGranted =
                 ActivityCompat.checkSelfPermission(
                     this,
                     Manifest.permission.BLUETOOTH_SCAN
-                ) != PackageManager.PERMISSION_GRANTED ||
+                ) == PackageManager.PERMISSION_GRANTED
+
+            val connectGranted =
                 ActivityCompat.checkSelfPermission(
                     this,
                     Manifest.permission.BLUETOOTH_CONNECT
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
+                ) == PackageManager.PERMISSION_GRANTED
+
+            if (!scanGranted || !connectGranted) {
 
                 ActivityCompat.requestPermissions(
                     this,
@@ -195,38 +290,51 @@ class MainActivity : ComponentActivity() {
         startScan()
     }
 
+    // ---------------------------------------------------------
+    // İZİN SONUÇLARI
+    // ---------------------------------------------------------
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
+
         super.onRequestPermissionsResult(
             requestCode,
             permissions,
             grantResults
         )
 
+        // GPS
         if (requestCode == 101) {
 
-            val fineGranted = ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+            val fineGranted =
+                ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
 
-            val coarseGranted = ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+            val coarseGranted =
+                ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
 
             if (fineGranted || coarseGranted) {
+
                 startLocationUpdates()
+
             } else {
-                locationText.text = "GPS izni verilmedi."
+
+                locationText.text =
+                    "📍 GPS izni verilmedi."
             }
 
             requestBluetoothPermissions()
         }
 
+        // Bluetooth
         if (requestCode == 100) {
 
             if (
@@ -235,48 +343,72 @@ class MainActivity : ComponentActivity() {
                     it == PackageManager.PERMISSION_GRANTED
                 }
             ) {
+
                 startScan()
+
             } else {
-                statusText.text = "Bluetooth izinleri verilmedi."
+
+                statusText.text =
+                    "🔵 Bluetooth izinleri verilmedi."
             }
         }
     }
 
+    // ---------------------------------------------------------
+    // GPS BAŞLAT
+    // ---------------------------------------------------------
+
     private fun startLocationUpdates() {
 
-        val fineGranted = ActivityCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        val fineGranted =
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
 
-        val coarseGranted = ActivityCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        val coarseGranted =
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
 
         if (!fineGranted && !coarseGranted) {
             return
         }
 
         try {
+
+            // Son bilinen konum
             val lastLocation =
+
                 if (fineGranted) {
+
                     locationManager.getLastKnownLocation(
                         LocationManager.GPS_PROVIDER
                     )
+
                 } else {
+
                     locationManager.getLastKnownLocation(
                         LocationManager.NETWORK_PROVIDER
                     )
                 }
 
             if (lastLocation != null) {
-                locationListener.onLocationChanged(lastLocation)
+
+                locationListener.onLocationChanged(
+                    lastLocation
+                )
             }
 
-            if (fineGranted &&
-                locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+            // GPS
+            if (
+                fineGranted &&
+                locationManager.isProviderEnabled(
+                    LocationManager.GPS_PROVIDER
+                )
             ) {
+
                 locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
                     2000L,
@@ -286,7 +418,13 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            // Network
+            if (
+                locationManager.isProviderEnabled(
+                    LocationManager.NETWORK_PROVIDER
+                )
+            ) {
+
                 locationManager.requestLocationUpdates(
                     LocationManager.NETWORK_PROVIDER,
                     3000L,
@@ -297,126 +435,48 @@ class MainActivity : ComponentActivity() {
             }
 
         } catch (e: SecurityException) {
-            locationText.text = "GPS erişim izni alınamadı."
+
+            locationText.text =
+                "📍 GPS erişim izni alınamadı."
+
         } catch (e: Exception) {
-            locationText.text = "Konum alınamadı: ${e.message}"
+
+            locationText.text =
+                "📍 Konum alınamadı: ${e.message}"
         }
     }
 
+    // ---------------------------------------------------------
+    // BLE TARAMA BAŞLAT
+    // ---------------------------------------------------------
+
     private fun startScan() {
 
-        val adapter = bluetoothAdapter
+        val adapter =
+            bluetoothAdapter
 
         if (adapter == null) {
-            statusText.text = "Bluetooth bulunamadı."
+
+            statusText.text =
+                "Bluetooth bulunamadı."
+
             return
         }
 
         if (!adapter.isEnabled) {
-            statusText.text = "Bluetooth kapalı."
+
+            statusText.text =
+                "Bluetooth kapalı."
+
             return
         }
 
         if (isScanning) {
+
             stopScan()
+
             return
         }
 
         if (
-            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
-            ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_SCAN
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-
-        bluetoothScanner = adapter.bluetoothLeScanner
-
-        if (bluetoothScanner == null) {
-            statusText.text = "BLE tarayıcı başlatılamadı."
-            return
-        }
-
-        targetFound = false
-
-        statusText.text = "Tag Go+ aranıyor..."
-        signalText.text = "RSSI: Bekleniyor..."
-
-        scanButton.text = "TARAMAYI DURDUR"
-
-        isScanning = true
-
-        try {
-            bluetoothScanner?.startScan(scanCallback)
-
-            handler.postDelayed(
-                stopScanRunnable,
-                15000
-            )
-        } catch (e: SecurityException) {
-            isScanning = false
-            scanButton.text = "TARAMAYI BAŞLAT"
-            statusText.text = "Bluetooth tarama izni gerekli."
-        }
-    }
-
-    private fun stopScan() {
-
-        if (!isScanning) {
-            return
-        }
-
-        if (
-            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
-            ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_SCAN
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-
-        try {
-            bluetoothScanner?.stopScan(scanCallback)
-        } catch (e: SecurityException) {
-            // Bluetooth izni kaldırılmış olabilir.
-        }
-
-        handler.removeCallbacks(stopScanRunnable)
-
-        isScanning = false
-
-        scanButton.text = "TARAMAYI BAŞLAT"
-
-        if (!targetFound) {
-            statusText.text = "Tag Go+ bulunamadı."
-            signalText.text = "RSSI: -"
-        }
-    }
-
-    override fun onDestroy() {
-
-        handler.removeCallbacks(stopScanRunnable)
-
-        if (isScanning) {
-            stopScan()
-        }
-
-        if (
-            ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED ||
-            ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            locationManager.removeUpdates(locationListener)
-        }
-
-        super.onDestroy()
-    }
-}
+            android
