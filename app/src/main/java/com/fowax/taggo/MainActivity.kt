@@ -1,4 +1,4 @@
-```kotlin
+
 package com.fowax.taggo
 
 import android.Manifest
@@ -626,4 +626,3 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 }
-```
